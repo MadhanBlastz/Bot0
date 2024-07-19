@@ -10,8 +10,8 @@ class Config(object):
     BOT_TOKEN = os.environ.get("BOT_TOKEN", "7391583970:AAHEmCU2fighBM8ILE4VNFUbUTmvdnekLKY") 
    
     # database config
-    DB_NAME = os.environ.get("DB_NAME","madara-uchiha")     
-    DB_URL  = os.environ.get("DB_URL","mongodb+srv://MADARA-UCHIHA:shubhamgaming33@madara-uchiha.ya7m1.mongodb.net/?retryWrites=true&w=majority")
+    DB_NAME = os.environ.get("DB_NAME","cluster0")     
+    DB_URL  = os.environ.get("DB_URL","mongodb+srv://madarazbotz:dHVfNQn8S9ZsREpS@cluster0.hx8zepm.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
  
     # other configs
     BOT_UPTIME  = time.time()
