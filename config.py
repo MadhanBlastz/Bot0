@@ -5,22 +5,22 @@ id_pattern = re.compile(r'^.\d+$')
 
 class Config(object):
     # pyro client config
-    API_ID    = os.environ.get("API_ID", "28243586")
-    API_HASH  = os.environ.get("API_HASH", "4022d5686b9b7a7cf8891205921a0ab3")
-    BOT_TOKEN = os.environ.get("BOT_TOKEN", "7332736456:AAG0ZUlFkt9pB_rkPSWeJXEF65H4qhBfaXo") 
+    API_ID    = os.environ.get("API_ID", "21661450")
+    API_HASH  = os.environ.get("API_HASH", "79612bc71908f95372808520a7eeee74")
+    BOT_TOKEN = os.environ.get("BOT_TOKEN", "7463606692:AAFKceJNgKeY2x01NsgRTFok0ifynPkpGXQ") 
    
     # database config
     DB_NAME = os.environ.get("DB_NAME","cluster0")     
-    DB_URL  = os.environ.get("DB_URL","mongodb+srv://sahilkaleech:iJxKPql7gZUB6m2H@cluster0.ax5b33v.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0")
+    DB_URL  = os.environ.get("DB_URL","mongodb+srv://MadhanBlastz:N0password@cluster0.4usvnqj.mongodb.net/?retryWrites=true&w=majority")
  
     # other configs
     BOT_UPTIME  = time.time()
     START_PIC   = os.environ.get("START_PIC", "https://telegra.ph/file/f2a5fd52b6edf6976c8f1.jpg")
-    ADMIN = [int(admin) if id_pattern.search(admin) else admin for admin in os.environ.get('ADMIN', '5340652544').split()]
+    ADMIN = [int(admin) if id_pattern.search(admin) else admin for admin in os.environ.get('ADMIN', '21661450').split()]
 
     # channels logs
     FORCE_SUB   = os.environ.get("FORCE_SUB", "-1002235661888") 
-    LOG_CHANNEL = int(os.environ.get("LOG_CHANNEL", "-1002057330647"))
+    LOG_CHANNEL = int(os.environ.get("LOG_CHANNEL", "-1002233706633"))
 
     # wes response configuration     
     WEBHOOK = bool(os.environ.get("WEBHOOK", True))
