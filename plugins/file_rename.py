@@ -104,7 +104,12 @@ async def doc(bot, update):
         if metadata:
 
             await ms.edit("I Found Your Metadata\n\n__Please Wait...__\n`Adding Metadata To File...`")
-            cmd = f"""ffmpeg -i "{path}" {metadata} "{metadata_path}" """
+            cmd = f'''ffmpeg -i "{path}" -map 0 -c:s copy -c:a copy -c:v copy \
+-metadata title="@AniMovieRulz" \
+-metadata author="@AniMovieRulz" \
+-metadata:s:s title="@AniMovieRulz" \
+-metadata:s:a title="@AniMovieRulz" \
+-metadata:s:v title="@AniMovieRulz" "{metadata_path}" '''
 
             process = await asyncio.create_subprocess_shell(
                 cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
