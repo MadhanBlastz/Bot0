@@ -9,7 +9,7 @@ from helper.utils import progress_for_pyrogram, convert, humanbytes, add_prefix_
 from helper.database import jishubotz
 from asyncio import sleep
 from PIL import Image
-import os, time, re, random, asyncio
+import os, time, re, random, asyncio, subprocess
 
 
 @Client.on_message(filters.private & (filters.document | filters.audio | filters.video))
@@ -60,6 +60,14 @@ async def refunc(client, message):
         # Download the file
         await client.download_media(file, original_file_path)
 
+        # Check if ffmpeg is available
+        if not is_ffmpeg_installed():
+            await message.reply_text("FFmpeg is not installed. Proceeding with renaming only.")
+            os.rename(original_file_path, new_file_path)
+            # Continue with the remaining process
+            await continue_processing(client, message, new_file_path, file, media)
+            return
+        
         # Metadata change command
         cmd = f'''ffmpeg -i "{original_file_path}" -map 0 -c:s copy -c:a copy -c:v copy \
         -metadata title="{new_name}" \
@@ -78,61 +86,73 @@ async def refunc(client, message):
             await message.reply_text(f"Error during metadata update: {stderr.decode()}\nProceeding with renaming only.")
             # Fallback to renaming only
             os.rename(original_file_path, new_file_path)
-
-        # Clean up original file if not renamed by fallback
-        if os.path.exists(original_file_path):
-            os.remove(original_file_path)
-
-        # Continue with the process (upload, thumbnail creation, etc.)
-        duration = 0
-        try:
-            parser = createParser(new_file_path)
-            metadata = extractMetadata(parser)
-            if metadata.has("duration"):
-                duration = metadata.get('duration').seconds
-            parser.close()   
-        except:
-            pass
-        
-        ph_path = None
-        user_id = int(message.chat.id)
-        c_caption = await jishubotz.get_caption(message.chat.id)
-        c_thumb = await jishubotz.get_thumbnail(message.chat.id)
-        media = getattr(file, file.media.value)
-
-        if c_caption:
-            try:
-                caption = c_caption.format(filename=new_name, filesize=humanbytes(media.file_size), duration=convert(duration))
-            except Exception as e:
-                return await message.reply_text(text=f"Your Caption Error: {e}")             
         else:
-            caption = f"**{new_name}**"
+            # Clean up original file if renamed
+            if os.path.exists(original_file_path):
+                os.remove(original_file_path)
+
+        # Continue with the remaining process
+        await continue_processing(client, message, new_file_path, file, media)
+
+
+async def continue_processing(client, message, file_path, file, media):
+    duration = 0
+    try:
+        parser = createParser(file_path)
+        metadata = extractMetadata(parser)
+        if metadata.has("duration"):
+            duration = metadata.get('duration').seconds
+        parser.close()   
+    except:
+        pass
+        
+    ph_path = None
+    user_id = int(message.chat.id)
+    c_caption = await jishubotz.get_caption(message.chat.id)
+    c_thumb = await jishubotz.get_thumbnail(message.chat.id)
+
+    if c_caption:
+        try:
+            caption = c_caption.format(filename=os.path.basename(file_path), filesize=humanbytes(media.file_size), duration=convert(duration))
+        except Exception as e:
+            return await message.reply_text(text=f"Your Caption Error: {e}")             
+    else:
+        caption = f"**{os.path.basename(file_path)}**"
  
-        if (media.thumbs or c_thumb):
-            if c_thumb:
-                ph_path = await client.download_media(c_thumb)
-                width, height, ph_path = await fix_thumb(ph_path)
-            else:
-                try:
-                    ph_path_ = await take_screen_shot(new_file_path, os.path.dirname(os.path.abspath(new_file_path)), random.randint(0, duration - 1))
-                    width, height, ph_path = await fix_thumb(ph_path_)
-                except Exception as e:
-                    ph_path = None
-                    print(e)
+    if (media.thumbs or c_thumb):
+        if c_thumb:
+            ph_path = await client.download_media(c_thumb)
+            width, height, ph_path = await fix_thumb(ph_path)
+        else:
+            try:
+                ph_path_ = await take_screen_shot(file_path, os.path.dirname(os.path.abspath(file_path)), random.randint(0, duration - 1))
+                width, height, ph_path = await fix_thumb(ph_path_)
+            except Exception as e:
+                ph_path = None
+                print(e)
 
-        # Sending output type selection message
-        button = [[InlineKeyboardButton("📁 Document", callback_data="upload_document")]]
-        if file.media in [MessageMediaType.VIDEO, MessageMediaType.DOCUMENT]:
-            button.append([InlineKeyboardButton("🎥 Video", callback_data="upload_video")])
-        elif file.media == MessageMediaType.AUDIO:
-            button.append([InlineKeyboardButton("🎵 Audio", callback_data="upload_audio")])
+    # Sending output type selection message
+    button = [[InlineKeyboardButton("📁 Document", callback_data="upload_document")]]
+    if media.type in [MessageMediaType.VIDEO, MessageMediaType.DOCUMENT]:
+        button.append([InlineKeyboardButton("🎥 Video", callback_data="upload_video")])
+    elif media.type == MessageMediaType.AUDIO:
+        button.append([InlineKeyboardButton("🎵 Audio", callback_data="upload_audio")])
 
-        await client.send_message(
-            message.chat.id,
-            text=f"**Select The Output File Type**\n\n**File Name:** `{new_name}`",
-            reply_to_message_id=file.id,
-            reply_markup=InlineKeyboardMarkup(button)
-        )
+    await client.send_message(
+        message.chat.id,
+        text=f"**Select The Output File Type**\n\n**File Name:** `{os.path.basename(file_path)}`",
+        reply_to_message_id=file.id,
+        reply_markup=InlineKeyboardMarkup(button)
+    )
+
+
+def is_ffmpeg_installed():
+    """ Check if ffmpeg is installed and available in the PATH. """
+    try:
+        subprocess.run(['ffmpeg', '-version'], stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
+        return True
+    except FileNotFoundError:
+        return False
 
 
 @Client.on_callback_query(filters.regex("upload"))
@@ -187,12 +207,14 @@ async def doc(bot, update):
             )
 
     except Exception as e:
-        return await ms.edit(f"**Error:** `{e}`")
-
-    finally:
         os.remove(file_path)
         if ph_path:
             os.remove(ph_path)
+        return await ms.edit(f"**Error:** `{e}`")    
 
     await ms.delete()
-	
+    if ph_path:
+        os.remove(ph_path)
+    if file_path:
+        os.remove(file_path)
+			      
